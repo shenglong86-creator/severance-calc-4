@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>加班費計算器｜勞基法</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #f0f4fa;
+  --surf:      #ffffff;
+  --surf2:     #f5f7fc;
+  --surf3:     #e8edf7;
+  --border:    #cdd5e8;
+  --border2:   #b8c4dc;
+  --text:      #1a2340;
+  --muted:     #5a6b8a;
+  --blue:      #2b6de8;
+  --blue-d:    rgba(43,109,232,.10);
+  --green:     #16a96e;
+  --green-d:   rgba(22,169,110,.10);
+  --amber:     #c97d00;
+  --amber-d:   rgba(201,125,0,.10);
+  --red:       #d03b2a;
+  --red-d:     rgba(208,59,42,.10);
+  --purple:    #6d40d4;
+  --purple-d:  rgba(109,64,212,.10);
+  --mono:      'DM Mono', monospace;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Noto Sans TC', sans-serif;
+  min-height: 100vh;
+  padding: 32px 16px 80px;
+}
+
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(43,109,232,.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 30% at 80% 90%, rgba(22,169,110,.03) 0%, transparent 60%);
+  pointer-events:none;
+}
+
+.wrap { max-width: 960px; margin: 0 auto; position: relative; }
+
+/* ── Header ── */
+.header { margin-bottom: 36px; }
+.header-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--blue-d); border: 1px solid rgba(79,142,245,.28);
+  color: var(--blue); font-family: var(--mono); font-size: 12px;
+  letter-spacing: 2px; padding: 4px 14px; border-radius: 4px;
+  margin-bottom: 14px; text-transform: uppercase;
+}
+.header-tag::before { content:'▶'; font-size:10px; }
+h1 { font-size: clamp(24px,3vw,28px); font-weight:900; color:#0f1b35; line-height:1.1; letter-spacing:-1px; }
+h1 em { font-style:normal; color:var(--blue); }
+.subtitle { margin-top:8px; font-size:14px; color:var(--muted); line-height:1.7; }
+
+/* ── Two-column layout ── */
+.layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+@media(max-width:780px){ .layout { grid-template-columns:1fr; } }
+
+/* ── Panel ── */
+.panel {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: visible; /* 確保不裁切內部點擊事件 */
+}
+.panel-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 14px 14px 0 0;
+  background: var(--surf);
+}
+.panel-body { padding: 20px; border-radius: 0 0 14px 14px; background: var(--surf); }
+
+/* ── Salary config ── */
+.field { margin-bottom: 14px; }
+.field:last-child { margin-bottom: 0; }
+.field label { display:block; font-size:14px; color:var(--muted); margin-bottom:5px; white-space: nowrap; }
+.inp-wrap { position:relative; }
+.inp-wrap input {
+  width:100%; background:var(--surf2); border:1px solid var(--border2);
+  color:var(--text); font-family:var(--mono); font-size:15px;
+  padding:9px 36px 9px 10px; border-radius:8px; outline:none;
+  transition:border-color .2s, box-shadow .2s;
+  -moz-appearance:textfield;
+}
+.inp-wrap input::-webkit-outer-spin-button,
+.inp-wrap input::-webkit-inner-spin-button { -webkit-appearance:none; }
+.inp-wrap input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(79,142,245,.12); }
+.inp-unit {
+  position:absolute; right:8px; top:50%; transform:translateY(-50%);
+  font-size:12px; color:var(--muted); pointer-events:none; font-family:var(--mono);
+}
+
+/* ── 時薪輸入框 ── */
+.hourly-field { position:relative; }
+.hourly-field input {
+  width:140px; background:var(--surf3); border:1px solid var(--blue);
+  color:var(--blue); font-family:var(--mono); font-size:14px;
+  padding:5px 30px 5px 10px; border-radius:7px; outline:none;
+  transition:border-color .2s, box-shadow .2s;
+  -moz-appearance:textfield;
+  box-shadow:0 0 0 2px rgba(79,142,245,.12);
+}
+.hourly-field input::-webkit-outer-spin-button,
+.hourly-field input::-webkit-inner-spin-button { -webkit-appearance:none; }
+.hourly-field input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(79,142,245,.2); }
+.hourly-field .inp-unit { color:var(--blue); font-size:12px; }
+.hourly-field .hourly-badge {
+  display:inline-block; font-size:12px; color:var(--amber); font-family:var(--mono);
+  background:var(--amber-d); border:1px solid rgba(245,185,62,.3);
+  padding:1px 6px; border-radius:4px; margin-left:6px; vertical-align:middle;
+}
+
+/* ── 月曆與格子 ── */
+.cal-nav {
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;
+}
+.cal-nav button {
+  background:var(--surf2); border:1px solid var(--border2); color:var(--text);
+  width:24px; height:24px; border-radius:5px; cursor:pointer; font-size:14px;
+  transition:background .15s;
+}
+.cal-nav button:hover { background:var(--surf3); }
+.cal-title { font-size:16px; font-weight:700; color:#0f1b35; }
+
+.day-labels {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:2px; margin-bottom:3px;
+}
+.day-labels span {
+  text-align:center; font-size:12px; font-family:var(--mono); color:var(--muted);
+  padding:2px 0;
+}
+
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+
+.cal-cell {
+  aspect-ratio:1;
+  min-height:40px;
+  border-radius:6px; border:1px solid var(--border);
+  cursor:pointer; position:relative;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  transition:all .15s; background:var(--surf2);
+  font-size:13px; font-weight:500; color:var(--text);
+  padding:2px;
+}
+/* 核心修正：避免子元素阻擋點擊事件 */
+.cal-cell * { pointer-events: none; }
+
+.cal-cell:hover { border-color:var(--blue); background:var(--surf3); transform: scale(1.02); }
+.cal-cell.empty { background:transparent; cursor:default; border-color:transparent; pointer-events:none; }
+.cal-cell.other-month { opacity:.25; border-color:var(--border); pointer-events:none; }
+.cal-cell.today { border-color:var(--blue) !important; box-shadow: inset 0 0 0 1px var(--blue); }
+
+/* Day type colors */
+.cal-cell.t-workday  { background:var(--surf2); }
+.cal-cell.t-rest     { background:rgba(43,109,232,.15); border-color:var(--blue); color:var(--blue); }
+.cal-cell.t-holiday  { background:rgba(208,59,42,.15);  border-color:var(--red);  color:var(--red); }
+.cal-cell.t-national { background:rgba(22,169,110,.15); border-color:var(--green); color:var(--green); }
+.cal-cell.t-national-fixed { background:rgba(220,100,0,.12); border-color:#dc6400; color:#dc6400; }
+.cal-cell.t-annual   { background:rgba(109,64,212,.15); border-color:var(--purple);color:var(--purple); }
+.cal-cell.t-plain-ot { background:rgba(201,125,0,.15); border-color:var(--amber); color:var(--amber); }
+
+.cal-cell .cell-hrs {
+  font-size:11px; font-family:var(--mono); opacity:.85; margin-top:1px; line-height:1; font-weight: 700;
+}
+
+/* ── Type picker popup ── */
+.popup-overlay {
+  display:none; position:fixed; inset:0; background:rgba(0,0,0,.6);
+  backdrop-filter:blur(4px); z-index:100; align-items:center; justify-content:center;
+}
+.popup-overlay.open { display:flex; }
+.popup {
+  background:var(--surf); border:1px solid var(--border2); border-radius:16px;
+  padding:24px; width:320px; max-width:90vw;
+  animation: popIn .2s ease;
+}
+@keyframes popIn { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
+.popup h3 { font-size:16px; color:#0f1b35; margin-bottom:4px; }
+.popup .pop-sub { font-size:14px; color:var(--muted); margin-bottom:16px; }
+.type-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.type-btn {
+  padding:10px 8px; border-radius:10px; border:1px solid var(--border2);
+  background:var(--surf2); cursor:pointer; text-align:center; transition:all .15s;
+  color:var(--text); font-size:14px; font-family:'Noto Sans TC',sans-serif;
+}
+.type-btn:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.15); }
+.type-btn.sel-workday  { border-color:var(--border2); background:var(--surf3); }
+.type-btn.sel-plain-ot { border-color:var(--amber);  background:var(--amber-d);  color:var(--amber); }
+.type-btn.sel-rest     { border-color:var(--blue);   background:var(--blue-d);   color:var(--blue); }
+.type-btn.sel-holiday  { border-color:var(--red);    background:var(--red-d);    color:var(--red); }
+.type-btn.sel-national { border-color:var(--green);  background:var(--green-d);  color:var(--green); }
+.type-btn.sel-annual   { border-color:var(--purple); background:var(--purple-d); color:var(--purple); }
+.type-icon { font-size:18px; display:block; margin-bottom:4px; }
+
+.hrs-row { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.hrs-row label { font-size:14px; color:var(--muted); white-space:nowrap; }
+.hrs-row input {
+  flex:1; background:var(--surf2); border:1px solid var(--border2); color:var(--text);
+  font-family:var(--mono); font-size:15px; padding:8px 12px; border-radius:8px; outline:none;
+  -moz-appearance:textfield;
+}
+.hrs-row input::-webkit-outer-spin-button,
+.hrs-row input::-webkit-inner-spin-button { -webkit-appearance:none; }
+.hrs-row input:focus { border-color:var(--blue); }
+
+.pop-btns { display:flex; gap:8px; }
+.pop-btns button {
+  flex:1; padding:10px; border-radius:8px; font-size:14px;
+  font-family:'Noto Sans TC',sans-serif; font-weight:700; cursor:pointer; border:none;
+  transition:opacity .15s;
+}
+.pop-btns button:hover { opacity:.85; }
+.btn-cancel { background:var(--surf2); color:var(--muted); }
+.btn-clear  { background:var(--red-d); color:var(--red); border:1px solid rgba(240,98,82,.3); }
+.btn-save   { background:var(--blue); color:#fff; }
+
+/* ── Results ── */
+.results-panel { margin-top: 20px; }
+.summary-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:20px; }
+.sum-card { background:var(--surf2); border:1px solid var(--border); border-radius:10px; padding:14px 16px; }
+.sum-card .s-label { font-size:12px; color:var(--muted); font-family:var(--mono); margin-bottom:6px; letter-spacing:1px; }
+.sum-card .s-val   { font-size:22px; font-family:var(--mono); font-weight:500; line-height:1; }
+.sum-card .s-val span { font-size:12px; color:var(--muted); margin-left:2px; }
+
+.breakdown-list { display:flex; flex-direction:column; gap:6px; }
+.bk-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 14px; background:var(--surf2); border-radius:8px;
+  font-size:14px; border-left:3px solid transparent;
+}
+.bk-row .bk-label { color:var(--muted); }
+.bk-row .bk-days  { font-family:var(--mono); font-size:12px; color:var(--muted); margin-left:8px; }
+.bk-row .bk-amt   { font-family:var(--mono); font-weight:500; }
+
+.bk-row.bk-plain-ot { border-color:var(--amber);  }
+.bk-row.bk-rest     { border-color:var(--blue);   }
+.bk-row.bk-holiday  { border-color:var(--red);    }
+.bk-row.bk-national { border-color:var(--green);  }
+.bk-row.bk-annual   { border-color:var(--purple); }
+
+.bk-row.bk-plain-ot .bk-amt { color:var(--amber); }
+.bk-row.bk-rest     .bk-amt { color:var(--blue); }
+.bk-row.bk-holiday  .bk-amt { color:var(--red); }
+.bk-row.bk-national .bk-amt { color:var(--green); }
+.bk-row.bk-annual   .bk-amt { color:var(--purple); }
+
+.total-bar {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:16px 20px; background:var(--surf3);
+  border:1px solid rgba(43,109,232,.3); border-radius:12px; margin-top:14px;
+}
+.total-bar .t-label { font-size:14px; color:var(--text); }
+.total-bar .t-val   { font-size:28px; font-family:var(--mono); font-weight:500; color:var(--green); }
+.total-bar .t-val span { font-size:14px; color:var(--muted); }
+
+/* ── Law reference ── */
+.law-ref {
+  background:var(--surf); border:1px solid var(--border);
+  border-left:3px solid var(--blue); border-radius:0 10px 10px 0;
+  padding:14px 18px; font-size:14px; color:var(--muted); line-height:2; margin-top:20px;
+}
+.law-ref strong { color:var(--blue); font-family:var(--mono); }
+
+/* ── Legend ── */
+.legend { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.leg-item { display:flex; align-items:center; gap:5px; font-size:14px; color:var(--muted); }
+.leg-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+
+/* ── Formula card ── */
+.formula-card {
+  background: var(--surf2); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; border-left: 3px solid var(--border2);
+}
+.formula-card-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.formula-card-row { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.9; }
+
+.no-data { text-align:center; padding:28px; font-size:14px; color:var(--muted); }
+
+
+/* ── Formula card ── */
+.formula-card {
+  background: var(--surf2); border-radius: 10px; padding: 12px 14px;
+  margin-bottom: 8px; border-left: 3px solid #cdd5e8;
+}
+.formula-card-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.formula-card-row { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.9; }
+.no-data { text-align:center; padding:28px; font-size:14px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="header">
+    <div class="header-tag">Taiwan Labor Standards Act</div>
+    <h1>加班費<em>計算器</em></h1>
+    <p class="subtitle">點擊月曆標記出勤日與時數，自動依勞基法計算加班費｜適用所有月薪制勞工</p>
+  </div>
+
+  <div class="layout">
+
+    <div>
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-head">
+          <span>薪資設定</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;color:var(--muted);font-family:var(--mono);letter-spacing:1px">時薪</span>
+            <div class="hourly-field">
+              <input type="number" id="hourlyInput" min="1" step="1" oninput="onHourlyInput()" title="可手動覆蓋時薪">
+              <span class="inp-unit">元</span>
+            </div>
+            <span class="hourly-badge" id="hourlyBadge">自動</span>
+          </div>
+        </div>
+        <div class="panel-body" style="display:grid; grid-template-columns: 1fr 0.8fr 0.5fr; gap:12px; align-items:end;">
+          <div class="field">
+            <label>月薪（底薪）</label>
+            <div class="inp-wrap">
+              <input type="number" id="monthlySalary" value="40000" min="0" step="1000" oninput="onSalaryInput()">
+              <span class="inp-unit">元</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>出勤天數(參考)</label>
+            <div class="inp-wrap">
+              <input type="number" id="workDays" value="22" min="1" max="31" title="僅供參考，不影響法定薪資計算" style="padding: 9px 24px 9px 8px;">
+              <span class="inp-unit">天</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>每日工時</label>
+            <div class="inp-wrap">
+              <input type="number" id="dailyHours" value="8" min="1" max="12" oninput="onSalaryInput()" style="padding: 9px 24px 9px 8px;">
+              <span class="inp-unit">時</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px">
+        <div class="panel-head">
+          <span>月曆出勤標記</span>
+          <button onclick="clearAll()" style="background:var(--red-d);border:1px solid rgba(240,98,82,.3);color:var(--red);font-size:14px;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">清除全部</button>
+        </div>
+        <div class="panel-body">
+          <div class="legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--amber)"></div>平日加班</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--blue)"></div>休息日</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--red)"></div>例假日</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--green)"></div>國定假日</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--purple)"></div>特休出勤</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#dc6400;"></div>國定假日（系統）</div>
+          </div>
+          <div class="cal-nav">
+            <button onclick="changeMonth(-1)">‹</button>
+            <span class="cal-title" id="calTitle"></span>
+            <button onclick="changeMonth(1)">›</button>
+          </div>
+          <div class="day-labels">
+            <span style="color:var(--red)">日</span>
+            <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span>
+            <span style="color:var(--blue)">六</span>
+          </div>
+          <div class="cal-grid" id="calGrid"></div>
+        </div>
+      </div>
+
+      <div class="panel results-panel">
+        <div class="panel-head">加班費明細</div>
+        <div class="panel-body" id="resultsBody">
+          <div class="no-data">點擊月曆日期標記加班，結果自動顯示</div>
+        </div>
+      </div>
+
+      <button id="btnGenDoc" onclick="generateDoc()"
+        style="width:100%;margin-bottom:16px;padding:14px;border-radius:10px;
+               border:1px solid rgba(62,207,142,.4);background:rgba(62,207,142,.1);
+               color:var(--green);font-size:15px;font-weight:700;cursor:pointer;
+               font-family:'Noto Sans TC',sans-serif;letter-spacing:1px;
+               transition:all .2s;display:none"
+        onmouseover="this.style.background='rgba(62,207,142,.18)'"
+        onmouseout="this.style.background='rgba(62,207,142,.1)'">
+        📄 產生狀紙文字
+      </button>
+
+      <div id="docOutput" style="display:none;margin-bottom:16px">
+        <div class="panel">
+          <div class="panel-head" style="justify-content:space-between">
+            <span>狀紙文字</span>
+            <div style="display:flex;gap:8px">
+              <button onclick="copyDoc()" style="background:var(--blue-d);border:1px solid rgba(79,142,245,.35);color:var(--blue);font-size:14px;padding:3px 12px;border-radius:5px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">複製</button>
+              <button onclick="closeDoc()" style="background:var(--surf2);border:1px solid var(--border2);color:var(--muted);font-size:14px;padding:3px 10px;border-radius:5px;cursor:pointer;font-family:'Noto Sans TC',sans-serif">關閉</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <textarea id="docText" readonly
+              style="width:100%;min-height:420px;background:var(--surf2);border:1px solid var(--border2);
+                     color:var(--text);font-family:'Noto Sans TC',monospace;font-size:14px;
+                     line-height:1.9;padding:14px;border-radius:8px;resize:vertical;outline:none;
+                     letter-spacing:0.3px"></textarea>
+            <div id="copyMsg" style="display:none;margin-top:8px;font-size:12px;color:var(--green);text-align:center">✅ 已複製到剪貼簿</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="law-ref">
+        <strong>§24 平日延長</strong>　前2h ×⁴⁄₃　第3h起 ×⁵⁄₃　
+        <strong>§24II 休息日</strong>　前2h ×⁴⁄₃　第3–8h ×⁵⁄₃　第9–12h ×⁸⁄₃　
+        <strong>§39/40 例假日</strong>　加倍日薪＋強制補假（不得以金錢取代）　
+        <strong>§39 國定假日</strong>　加倍日薪＋超時加成（補休由勞資協商）　
+        <strong>特休出勤</strong>　依§38IV 工資加倍或補假
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="panel">
+        <div class="panel-head">計算公式一覽</div>
+        <div class="panel-body">
+          <div id="formulaCards"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">使用說明</div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:14px;color:var(--muted);line-height:1.9">
+            <div>① 上方輸入你的<strong style="color:var(--text)">月薪、工作天數</strong>，系統自動換算時薪與日薪</div>
+            <div>② 右上角<strong style="color:var(--blue)">時薪輸入框</strong>可手動覆蓋，後續計算立即以自訂時薪為準</div>
+            <div>③ 點擊月曆上的日期，選擇<strong style="color:var(--text)">加班類型</strong>與<strong style="color:var(--text)">工時</strong></div>
+            <div>④ 可標記<strong style="color:var(--amber)">平日加班</strong>、<strong style="color:var(--blue)">休息日</strong>、<strong style="color:var(--red)">例假日</strong>、<strong style="color:var(--green)">國定假日</strong>、<strong style="color:var(--purple)">特休出勤</strong></div>
+            <div>⑤ 下方自動顯示各類型加班費合計</div>
+            <div style="margin-top:4px;padding:10px;background:var(--surf3);border-radius:8px;border-left:3px solid var(--amber)">
+              ⚠️ 本計算器以勞基法公式計算，實際金額依雇主給付方式可能不同
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="popup-overlay" id="overlay" onclick="closePopupOnOverlay(event)">
+  <div class="popup">
+    <h3 id="popTitle">選擇加班類型</h3>
+    <div class="pop-sub" id="popSub"></div>
+    <div class="type-btns">
+      <button class="type-btn" onclick="selectType('plain-ot')">
+        <span class="type-icon">☀️</span>平日加班
+      </button>
+      <button class="type-btn" onclick="selectType('rest')">
+        <span class="type-icon">🔵</span>休息日
+      </button>
+      <button class="type-btn" onclick="selectType('holiday')">
+        <span class="type-icon">🔴</span>例假日
+      </button>
+      <button class="type-btn" onclick="selectType('national')">
+        <span class="type-icon">🟢</span>國定假日
+      </button>
+      <button class="type-btn" onclick="selectType('annual')" style="grid-column:1/-1">
+        <span class="type-icon">🟣</span>特休出勤
+      </button>
+    </div>
+    <div class="hrs-row" id="hrsRow">
+      <label>加班時數</label>
+      <input type="number" id="popHours" value="4" min="1" max="12">
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">h</span>
+    </div>
+    <!-- 固定一日工資提示（例假日/特休）-->
+    <div id="fixedDayNote" style="display:none;margin-bottom:16px;padding:10px 12px;
+         background:rgba(245,185,62,.1);border:1px solid rgba(245,185,62,.3);border-radius:8px;
+         font-size:14px;color:var(--amber);line-height:1.7">
+      ⚖️ 依勞基法規定，不論實際出勤幾小時，<br>均以<strong>整日工資加倍</strong>計算，不按時數比例折算。
+    </div>
+    <!-- 國定假日超時輸入 -->
+    <div class="hrs-row" id="nationalOtRow" style="display:none">
+      <label>超時時數（超過正常工時部分）</label>
+      <input type="number" id="popNatOt" value="0" min="0" max="8">
+      <span style="font-size:12px;color:var(--muted);font-family:var(--mono)">h</span>
+    </div>
+    <!-- 例假日補假提醒（僅顯示，不影響計算）-->
+    <div id="compDayRow" style="display:none;margin-bottom:16px;padding:10px 12px;
+         background:rgba(240,98,82,.08);border:1px solid rgba(240,98,82,.25);border-radius:8px;
+         font-size:14px;color:var(--red);line-height:1.7">
+      <div id="btnCompYes" style="display:none"></div>
+      <div id="btnCompNo"  style="display:none"></div>
+      ⚠️ 例假日出勤除加倍工資外，<strong>法律強制要求補假一天</strong>（§40），<br>
+      雇主不得以金錢替代補假義務。
+    </div>
+    <div class="pop-btns">
+      <button class="btn-cancel" onclick="closePopup()">取消</button>
+      <button class="btn-clear"  onclick="clearDay()">清除</button>
+      <button class="btn-save"   onclick="saveDay()">確認</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let curYear  = new Date().getFullYear();
+let curMonth = new Date().getMonth();
+let data = {};
+let editingKey = null;
+let selectedType = null;
+let compDay = true;
+
+// ── 中華民國國定假日（114-116年）──
+const NATIONAL_HOLIDAYS = new Set([
+  // 114年（2025）
+  '2025-01-01','2025-01-27','2025-01-28','2025-01-29',
+  '2025-01-30','2025-01-31','2025-02-04','2025-02-28',
+  '2025-04-03','2025-04-04','2025-05-01','2025-05-30',
+  '2025-06-07','2025-09-03','2025-10-10',
+  // 115年（2026）
+  '2026-01-01','2026-01-26','2026-01-27','2026-01-28',
+  '2026-01-29','2026-01-30','2026-02-28','2026-04-03',
+  '2026-04-04','2026-04-05','2026-05-01','2026-06-19',
+  '2026-09-03','2026-10-10',
+  // 116年（2027）
+  '2027-01-01','2027-02-15','2027-02-16','2027-02-17',
+  '2027-02-18','2027-02-19','2027-02-28','2027-04-03',
+  '2027-04-04','2027-05-01','2027-10-10',
+]); // 補休預設有
+
+function setComp(val) {
+  compDay = val;
+  updateCompDayUI();
+}
+
+function updateCompDayUI() {
+  document.getElementById('btnCompYes').classList.toggle('active', compDay === true);
+  document.getElementById('btnCompNo').classList.toggle('active', compDay === false);
+}
+
+// [變更1] 時薪覆蓋狀態
+let hourlyOverride = null; // null = 自動；數字 = 手動
+
+// ── Wage helpers ──
+function getMonthlySalary() { return +document.getElementById('monthlySalary').value || 40000; }
+function getWorkDays()      { return +document.getElementById('workDays').value      || 22; }
+function getDailyHours()    { return +document.getElementById('dailyHours').value    || 8; }
+
+// 時薪：優先使用手動覆蓋值
+function getHourlyWage() {
+  if (hourlyOverride !== null && hourlyOverride > 0) return hourlyOverride;
+  return getMonthlySalary() / 30 / 8;
+}
+// 日薪固定除以30（勞基法規定，不論工作天數）
+function getDailyWage() { return getMonthlySalary() / 30; }
+
+// [變更1] 月薪/天數/工時變動 → 重設覆蓋、更新 input
+function onSalaryInput() {
+  hourlyOverride = null;
+  syncHourlyInput();
+  updateAll();
+}
+
+// [變更1] 使用者手動改時薪
+function onHourlyInput() {
+  const v = +document.getElementById('hourlyInput').value;
+  hourlyOverride = (v > 0) ? v : null;
+  const badge = document.getElementById('hourlyBadge');
+  if (hourlyOverride) {
+    badge.textContent = '自訂';
+    badge.style.background = 'rgba(79,142,245,.18)';
+    badge.style.color = 'var(--blue)';
+    badge.style.borderColor = 'rgba(79,142,245,.35)';
+  } else {
+    badge.textContent = '自動';
+    badge.style.background = 'var(--amber-d)';
+    badge.style.color = 'var(--amber)';
+    badge.style.borderColor = 'rgba(245,185,62,.3)';
+  }
+  updateAll();
+}
+
+function syncHourlyInput() {
+  document.getElementById('hourlyInput').value = Math.round(getMonthlySalary() / 30 / 8);
+  const badge = document.getElementById('hourlyBadge');
+  badge.textContent = '自動';
+  badge.style.background = 'var(--amber-d)';
+  badge.style.color = 'var(--amber)';
+  badge.style.borderColor = 'rgba(245,185,62,.3)';
+}
+
+function updateAll() {
+  renderFormulas();
+  renderResults();
+}
+
+// ── Calc functions ──
+function calcOT(hours, type, compDayFlag = true) {
+  const hw = getHourlyWage();
+  const dw = getDailyWage();
+  let pay = 0;
+  switch(type) {
+    case 'plain-ot': {
+      const p1 = Math.min(hours, 2);
+      const p2 = Math.max(hours - 2, 0);
+      pay = hw*(4/3)*p1 + hw*(5/3)*p2;
+      break;
+    }
+    case 'rest': {
+      // 勞基法§24II：前2h×4/3，第3-8h×5/3，第9-12h×8/3
+      const r1 = Math.min(hours, 2);
+      const r2 = Math.min(Math.max(hours - 2, 0), 6);
+      const r3 = Math.max(hours - 8, 0);
+      pay = hw*(4/3)*r1 + hw*(5/3)*r2 + hw*(8/3)*r3;
+      break;
+    }
+    case 'holiday':
+      // 勞基法§39/40：出勤一律加倍日薪，且強制補假（法無×3選項）
+      pay = dw;
+      break;
+    case 'national': {
+      // 勞基法§39：8h以內一律加發1日工資；超時依平日費率加算
+      pay = dw;
+      const dh = getDailyHours();
+      if (hours > dh) {
+        const ot = hours - dh;
+        const n1 = Math.min(ot, 2);
+        const n2 = Math.max(ot-2, 0);
+        pay += hw*(4/3)*n1 + hw*(5/3)*n2;
+      }
+      break;
+    }
+    case 'annual':
+      // 勞基法§38IV：一律加發1日工資（不按時數比例）
+      pay = dw;
+      break;
+  }
+  return Math.round(pay);
+}
+
+// ── Calendar ──
+function changeMonth(d) {
+  curMonth += d;
+  if (curMonth > 11) { curMonth = 0; curYear++; }
+  if (curMonth < 0)  { curMonth = 11; curYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  document.getElementById('calTitle').textContent = `${curYear} 年 ${curMonth+1} 月`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(curYear, curMonth, 1).getDay();
+  const daysInMonth = new Date(curYear, curMonth+1, 0).getDate();
+  const today = new Date();
+  const prevDays = new Date(curYear, curMonth, 0).getDate();
+
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    cell.textContent = prevDays - i;
+    grid.appendChild(cell);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${curYear}-${String(curMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell t-workday';
+    const isToday = today.getFullYear()===curYear && today.getMonth()===curMonth && today.getDate()===d;
+    if (isToday) cell.classList.add('today');
+    if (data[key]) {
+      cell.classList.remove('t-workday');
+      cell.classList.add('t-' + data[key].type);
+      cell.innerHTML = `${d}<span class="cell-hrs">${data[key].hours}h</span>`;
+    } else {
+      cell.textContent = d;
+      if (NATIONAL_HOLIDAYS.has(key)) {
+        cell.classList.remove('t-workday');
+        cell.classList.add('t-national-fixed');
+      }
+    }
+    cell.addEventListener('click', () => openPopup(key, d));
+    grid.appendChild(cell);
+  }
+
+  const total = firstDay + daysInMonth;
+  const rem = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= rem; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell other-month';
+    cell.textContent = i;
+    grid.appendChild(cell);
+  }
+}
+
+// ── Popup ──
+function openPopup(key, day) {
+  editingKey = key;
+  selectedType = data[key]?.type || null;
+  compDay = data[key]?.compDay ?? true; // 預設有補休
+  document.getElementById('popTitle').textContent = `${curYear}年${curMonth+1}月${day}日`;
+  document.getElementById('popSub').textContent = '選擇加班類型並輸入時數';
+  document.getElementById('popHours').value = data[key]?.hours || 4;
+  document.getElementById('popNatOt').value = data[key]?.otHours || 0;
+  // reset all conditional rows
+  document.getElementById('hrsRow').style.display = 'flex';
+  document.getElementById('fixedDayNote').style.display = 'none';
+  document.getElementById('nationalOtRow').style.display = 'none';
+  document.getElementById('compDayRow').style.display = 'none';
+  if (selectedType) selectType(selectedType);
+  updateTypeButtons();
+  updateCompDayUI();
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closePopup() {
+  document.getElementById('overlay').classList.remove('open');
+  editingKey = null;
+  selectedType = null;
+}
+
+function closePopupOnOverlay(e) {
+  if (e.target === document.getElementById('overlay')) closePopup();
+}
+
+function selectType(t) {
+  selectedType = t;
+  updateTypeButtons();
+  // 例假日/國定假日/特休：8h內不論幾小時均給整日，隱藏一般時數輸入
+  // 國定假日可輸入超時（>8h）部分
+  const isFixed = (t === 'holiday' || t === 'annual');
+  const isNational = (t === 'national');
+  document.getElementById('hrsRow').style.display = (isFixed) ? 'none' : 'flex';
+  document.getElementById('fixedDayNote').style.display = isFixed ? 'block' : 'none';
+  document.getElementById('nationalOtRow').style.display = isNational ? 'flex' : 'none';
+  // 例假日顯示補假提醒；國定假日和例假日移除×3選項
+  document.getElementById('compDayRow').style.display = (t === 'holiday') ? 'block' : 'none';
+  if (t === 'holiday') updateCompDayUI();
+}
+
+function updateTypeButtons() {
+  document.querySelectorAll('.type-btn').forEach(b => b.className = 'type-btn');
+  if (!selectedType) return;
+  const types = ['plain-ot','rest','holiday','national','annual'];
+  const btns = document.querySelectorAll('.type-btn');
+  types.forEach((t, i) => {
+    if (t === selectedType) btns[i].classList.add('sel-' + t);
+  });
+}
+
+function saveDay() {
+  if (!selectedType || !editingKey) { alert('請先選擇加班類型'); return; }
+  const dh = getDailyHours();
+  let hrs;
+  if (selectedType === 'holiday' || selectedType === 'annual') {
+    hrs = dh; // 固定一日工時
+  } else if (selectedType === 'national') {
+    const ot = +document.getElementById('popNatOt').value || 0;
+    hrs = dh + ot; // 正常工時 + 超時部分
+  } else {
+    hrs = +document.getElementById('popHours').value || 4;
+  }
+  data[editingKey] = { type: selectedType, hours: hrs, compDay: null };
+  closePopup();
+  renderCalendar();
+  renderResults();
+}
+
+function clearDay() {
+  if (editingKey) delete data[editingKey];
+  closePopup();
+  renderCalendar();
+  renderResults();
+}
+
+function clearAll() {
+  if (!confirm('確定要清除所有標記嗎？')) return;
+  data = {};
+  renderCalendar();
+  renderResults();
+}
+
+// ── Results ──
+const typeInfo = {
+  'plain-ot': { label:'平日加班',    color:'var(--amber)' },
+  'rest':     { label:'休息日出勤',  color:'var(--blue)' },
+  'holiday':  { label:'例假日出勤',  color:'var(--red)' },
+  'national': { label:'國定假日出勤',color:'var(--green)' },
+  'annual':   { label:'特休出勤',    color:'var(--purple)' },
+};
+
+function renderResults() {
+  const body = document.getElementById('resultsBody');
+  if (Object.keys(data).length === 0) {
+    body.innerHTML = '<div class="no-data">點擊月曆日期標記加班，結果自動顯示</div>';
+    document.getElementById('btnGenDoc').style.display = 'none';
+    document.getElementById('docOutput').style.display = 'none';
+    return;
+  }
+  const groups = {};
+  let total = 0;
+  for (const [key, entry] of Object.entries(data)) {
+    const pay = calcOT(entry.hours, entry.type, entry.compDay !== false);
+    total += pay;
+    if (!groups[entry.type]) groups[entry.type] = { days:0, hours:0, pay:0 };
+    groups[entry.type].days++;
+    groups[entry.type].hours += entry.hours;
+    groups[entry.type].pay += pay;
+  }
+  const totalDays = Object.values(groups).reduce((s,g)=>s+g.days,0);
+  body.innerHTML = `
+    <div class="summary-grid">
+      <div class="sum-card">
+        <div class="s-label">加班天數</div>
+        <div class="s-val" style="color:var(--blue)">${totalDays} <span>天</span></div>
+      </div>
+      <div class="sum-card">
+        <div class="s-label">本月加班費</div>
+        <div class="s-val" style="color:var(--green)">$${total.toLocaleString()} <span>元</span></div>
+      </div>
+    </div>
+    <div class="breakdown-list" id="bkList"></div>
+    <div class="total-bar">
+      <span class="t-label">合計加班費</span>
+      <span class="t-val">$${total.toLocaleString()} <span>元</span></span>
+    </div>
+  `;
+  document.getElementById('btnGenDoc').style.display = 'block';
+  const bkList = document.getElementById('bkList');
+  ['plain-ot','rest','holiday','national','annual'].forEach(t => {
+    if (!groups[t]) return;
+    const g = groups[t];
+    const info = typeInfo[t];
+    const row = document.createElement('div');
+    row.className = `bk-row bk-${t}`;
+    let compBadge = '';
+    if (t === 'holiday') {
+      compBadge = `<span style="font-size:12px;background:rgba(240,98,82,.15);color:var(--red);border:1px solid rgba(240,98,82,.35);border-radius:4px;padding:1px 6px;margin-left:6px;font-family:var(--mono)">強制補假 ${g.days} 天</span>`;
+    } else if (t === 'national') {
+      compBadge = `<span style="font-size:12px;background:rgba(62,207,142,.15);color:var(--green);border:1px solid rgba(62,207,142,.35);border-radius:4px;padding:1px 6px;margin-left:6px;font-family:var(--mono)">補休可協商</span>`;
+    }
+    row.innerHTML = `
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+        <span class="bk-label">${info.label}</span>
+        <span class="bk-days">${g.days}天 / ${g.hours}h</span>
+        ${compBadge}
+      </div>
+      <span class="bk-amt">$${Math.round(g.pay).toLocaleString()}</span>
+    `;
+    bkList.appendChild(row);
+  });
+}
+
+// ── Formula cards ──
+function renderFormulas() {
+  const hw = Math.round(getHourlyWage());
+  const dw = Math.round(getDailyWage());
+  const dh = getDailyHours();
+  // 使用真實色值，避免 JS 無法解析 CSS 變數
+  const cards = [
+    {
+      type:'平日加班', color:'#c97d00', icon:'☀️',
+      rows:[
+        `前 2 小時：${hw} × 4/3 × 2 = ${Math.round(hw*4/3*2)} 元`,
+        `第 3h 起：${hw} × 5/3 / 時`,
+      ]
+    },
+    {
+      type:'休息日', color:'#2b6de8', icon:'🔵',
+      rows:[
+        `前 2h：${hw} × 4/3 × 2 = ${Math.round(hw*4/3*2)} 元`,
+        `第 3–8h：${hw} × 5/3 / 時`,
+        `第 9–12h：${hw} × 8/3 / 時`,
+      ]
+    },
+    {
+      type:'例假日', color:'#d03b2a', icon:'🔴',
+      rows:[`加倍日薪 = ${dw} 元`, `＋ 強制補假1天（§40）`]
+    },
+    {
+      type:'國定假日', color:'#16a96e', icon:'🟢',
+      rows:[`加倍日薪 = ${dw} 元（不論幾小時）`, `超時部分依平日費率加算`]
+    },
+    {
+      type:'特休出勤', color:'#6d40d4', icon:'🟣',
+      rows:[`工資加倍 = 再加 ${dw} 元`, `或擇日補假`]
+    },
+  ];
+  const container = document.getElementById('formulaCards');
+  container.innerHTML = '';
+  cards.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'formula-card';
+    el.style.borderLeftColor = c.color;
+    el.innerHTML = `
+      <div class="formula-card-title" style="color:${c.color}">${c.icon} ${c.type}</div>
+      ${c.rows.map(r => `<div class="formula-card-row">${r}</div>`).join('')}
+    `;
+    container.appendChild(el);
+  });
+}
+
+// ── 狀紙產生 ──
+const typeLabel = {
+  'plain-ot': '平日延長工時',
+  'rest':     '休息日出勤',
+  'holiday':  '例假日出勤',
+  'national': '國定假日出勤',
+  'annual':   '特休日出勤',
+};
+const lawRef = {
+  'plain-ot': '勞動基準法第24條',
+  'rest':     '勞動基準法第24條第3項',
+  'holiday':  '勞動基準法第39條、第40條',
+  'national': '勞動基準法第39條',
+  'annual':   '勞動基準法第38條第4項',
+};
+
+function generateDoc() {
+  if (Object.keys(data).length === 0) return;
+
+  const monthly = getMonthlySalary();
+  const wdays   = getWorkDays();
+  const dh      = getDailyHours();
+  const hw      = getHourlyWage();
+  const dw      = getDailyWage();
+  const today   = new Date();
+  const y_roc   = today.getFullYear() - 1911;
+  const dateStr = '\u4e2d\u83ef\u6c11\u570b' + y_roc + '\u5e74' + (today.getMonth()+1) + '\u6708' + today.getDate() + '\u65e5';
+
+  const entries = Object.entries(data).sort(([a],[b]) => a.localeCompare(b));
+
+  let detailLines = [];
+  let grandTotal = 0;
+  let rowNum = 1;
+
+  for (const [key, entry] of entries) {
+    const parts = key.split('-');
+    const roc = (parseInt(parts[0]) - 1911) + '\u5e74' + parseInt(parts[1]) + '\u6708' + parseInt(parts[2]) + '\u65e5';
+    const pay = calcOT(entry.hours, entry.type, entry.compDay !== false);
+    grandTotal += pay;
+    const tl = typeLabel[entry.type];
+    const h = entry.hours;
+    const hwR = Math.round(hw * 10) / 10;
+    const dwR = Math.round(dw);
+    let calcDesc = '';
+
+    switch(entry.type) {
+      case 'plain-ot': {
+        const h1 = Math.min(h, 2), h2 = Math.max(h-2, 0);
+        const parts2 = [];
+        if (h1 > 0) parts2.push('\u524d' + h1 + '\u5c0f\u6642\uff1a' + hwR + '\u5143x4/3x' + h1 + '=' + Math.round(hw*(4/3)*h1) + '\u5143');
+        if (h2 > 0) parts2.push('\u7b2c3\u5c0f\u6642\u8d77' + h2 + '\u5c0f\u6642\uff1a' + hwR + '\u5143x5/3x' + h2 + '=' + Math.round(hw*(5/3)*h2) + '\u5143');
+        calcDesc = parts2.join('\uff1b');
+        break;
+      }
+      case 'rest': {
+        const r1 = Math.min(h, 2);
+        const r2 = Math.min(Math.max(h-2, 0), 6);
+        const r3 = Math.max(h-8, 0);
+        const parts3 = [];
+        if (r1 > 0) parts3.push('\u524d' + r1 + '\u5c0f\u6642\uff1a' + hwR + '\u5143x4/3x' + r1 + '=' + Math.round(hw*(4/3)*r1) + '\u5143');
+        if (r2 > 0) parts3.push('\u7b2c3-8\u5c0f\u6642\uff08\u5171' + r2 + '\u5c0f\u6642\uff09\uff1a' + hwR + '\u5143x5/3x' + r2 + '=' + Math.round(hw*(5/3)*r2) + '\u5143');
+        if (r3 > 0) parts3.push('\u7b2c9-12\u5c0f\u6642\uff08\u5171' + r3 + '\u5c0f\u6642\uff09\uff1a' + hwR + '\u5143x8/3x' + r3 + '=' + Math.round(hw*(8/3)*r3) + '\u5143');
+        calcDesc = parts3.join('\uff1b');
+        break;
+      }
+      case 'holiday':
+        calcDesc = '\u52a0\u500d\u65e5\u85aa\uff08\u00a739/40\uff09\uff1a' + dwR + '\u5143\uff0c\u96c7\u4e3b\u53e6\u61c9\u88dc\u5047\u4e00\u5929';
+        break;
+      case 'national': {
+        const ot = Math.max(h - dh, 0);
+        let otDesc = '';
+        if (ot > 0) {
+          const n1 = Math.min(ot, 2), n2 = Math.max(ot-2, 0);
+          const np = [];
+          if (n1 > 0) np.push('\u524d' + n1 + '\u5c0f\u6642' + Math.round(hw*(4/3)*n1) + '\u5143');
+          if (n2 > 0) np.push('\u7b2c3\u5c0f\u6642\u8d77' + n2 + '\u5c0f\u6642' + Math.round(hw*(5/3)*n2) + '\u5143');
+          otDesc = '\uff1b\u5ef6\u9577\u5de5\u6642\uff1a' + np.join('+');
+        }
+        calcDesc = '\u52a0\u500d\u65e5\u85aa\uff08\u00a739\uff09\uff1a' + dwR + '\u5143' + otDesc;
+        break;
+      }
+      case 'annual':
+        calcDesc = '\u5de5\u8cc7\u52a0\u500d\uff08\u00a738IV\uff09\uff1a\u518d\u52a0' + dwR + '\u5143';
+        break;
+    }
+
+    detailLines.push('  ' + rowNum + '\u3001' + roc + '\uff08' + tl + '\uff09\uff1a\u51fa\u52e4' + h + '\u5c0f\u6642');
+    detailLines.push('     \u8a08\u7b97\u65b9\u5f0f\uff1a' + calcDesc);
+    detailLines.push('     \u61c9\u7d66\u4ed8\u52a0\u73ed\u8cbb\uff1a\u65b0\u81fa\u5e63 ' + pay.toLocaleString() + ' \u5143');
+    detailLines.push('');
+    rowNum++;
+  }
+
+  const groups = {};
+  for (const [,entry] of entries) {
+    const pay = calcOT(entry.hours, entry.type, entry.compDay !== false);
+    if (!groups[entry.type]) groups[entry.type] = { days:0, hours:0, pay:0 };
+    groups[entry.type].days++;
+    groups[entry.type].hours += entry.hours;
+    groups[entry.type].pay += pay;
+  }
+
+  const summaryLines = [];
+  const order = ['plain-ot','rest','holiday','national','annual'];
+  order.forEach(t => {
+    if (!groups[t]) return;
+    const g = groups[t];
+    summaryLines.push('  \u30fb' + typeLabel[t] + '\uff1a\u5171 ' + g.days + ' \u65e5\uff0c\u5408\u8a08 ' + g.hours + ' \u5c0f\u6642\uff0c\u61c9\u7d66\u4ed8 ' + Math.round(g.pay).toLocaleString() + ' \u5143\uff08\u4f9d' + lawRef[t] + '\uff09');
+  });
+
+  const SEP = '\u2501'.repeat(34);
+  const lines = [
+    '\u52a0\u73ed\u8cbb\u8acb\u6c42\u660e\u7d30\u8aaa\u660e\u66f8',
+    '\uff08\u4f9b\u6c11\u4e8b\u8d77\u8a34\u72c0\u3001\u7533\u8a34\u66f8\u6216\u5b58\u8b49\u4fe1\u51fd\u4f7f\u7528\uff09',
+    '\u88fd\u4f5c\u65e5\u671f\uff1a' + dateStr,
+    SEP,
+    '',
+    '\u3010\u85aa\u8cc7\u57fa\u6e96\u3011',
+    '  \u6708\u85aa\uff1a\u65b0\u81fa\u5e63 ' + monthly.toLocaleString() + ' \u5143',
+    '  \u6bcf\u6708\u5de5\u4f5c\u5929\u6578\uff1a' + wdays + ' \u5929',
+    '  \u6bcf\u65e5\u5de5\u6642\uff1a' + dh + ' \u5c0f\u6642',
+    '  \u6bcf\u65e5\u5de5\u8cc7\uff1a\u65b0\u81fa\u5e63 ' + Math.round(dw).toLocaleString() + ' \u5143\uff08\u6708\u85aa\u00f730\u65e5\uff0c\u4f9d\u52de\u52d5\u90e8\u51fd\u91cb\u4e0d\u8ad6\u5927\u6708\u5c0f\u6708\u5747\u4ee530\u65e5\u8a08\uff09',
+    '  \u6bcf\u5c0f\u6642\u5de5\u8cc7\uff1a\u65b0\u81fa\u5e63 ' + (Math.round(hw*10)/10) + ' \u5143\uff08\u6708\u85aa\u00f730\u00f78\uff0c\u4f9d\u52de\u57fa\u6cd5\u7b2c24\u689d\uff09',
+    '',
+    SEP,
+    '',
+    '\u3010\u5404\u65e5\u52a0\u73ed\u8cbb\u8a08\u7b97\u660e\u7d30\u3011',
+    '',
+  ].concat(detailLines).concat([
+    SEP,
+    '',
+    '\u3010\u52a0\u73ed\u8cbb\u5f59\u7e3d\u3011',
+    '',
+  ]).concat(summaryLines).concat([
+    '',
+    '  \u5408\u8a08\u61c9\u7d66\u4ed8\u52a0\u73ed\u8cbb\uff1a\u65b0\u81fa\u5e63 ' + grandTotal.toLocaleString() + ' \u5143\u6574',
+    '',
+    SEP,
+    '',
+    '\u3010\u6cd5\u5f8b\u4f9d\u64da\u3011',
+    '  \u4e00\u3001\u52de\u52d5\u57fa\u6e96\u6cd5\u7b2c24\u689d\uff1a\u5e73\u65e5\u53ca\u4f11\u606f\u65e5\u5ef6\u9577\u5de5\u6642\u5de5\u8cc7\u8a08\u7b97\u6a19\u6e96\u3002',
+    '  \u4e8c\u3001\u52de\u52d5\u57fa\u6e96\u6cd5\u7b2c39\u689d\uff1a\u5047\u65e5\u3001\u4f8b\u5047\u65e5\u53ca\u4f11\u606f\u65e5\u51fa\u52e4\u5de5\u8cc7\u61c9\u52a0\u500d\u767c\u7d66\u3002',
+    '  \u4e09\u3001\u52de\u52d5\u57fa\u6e96\u6cd5\u7b2c40\u689d\uff1a\u4f8b\u5047\u65e5\u51fa\u52e4\u9664\u52a0\u500d\u5de5\u8cc7\u5916\uff0c\u96c7\u4e3b\u8ca0\u6709\u5f37\u5236\u88dc\u5047\u7fa9\u52d9\u3002',
+    '  \u56db\u3001\u52de\u52d5\u57fa\u6e96\u6cd5\u7b2c38\u689d\u7b2c4\u9805\uff1a\u7279\u5225\u4f11\u5047\u51fa\u52e4\uff0c\u5de5\u8cc7\u61c9\u52a0\u500d\u767c\u7d66\u3002',
+    '  \u4e94\u3001\u52de\u52d5\u57fa\u6e96\u6cd5\u7b2c79\u689d\uff1a\u9055\u53cd\u4e0a\u958b\u898f\u5b9a\u8005\uff0c\u8655\u65b0\u81fa\u5e632\u842c\u5143\u4ee5\u4e0a100\u842c\u5143\u4ee5\u4e0b\u7f70\u9418\u3002',
+    '',
+    '  \u672c\u660e\u7d30\u66f8\u4f9d\u52de\u52d5\u57fa\u6e96\u6cd5\u76f8\u95dc\u898f\u5b9a\u8a08\u7b97\uff0c\u96c7\u4e3b\u5982\u6709\u722d\u8b70\uff0c',
+    '  \u52de\u5de5\u5f97\u5411\u5404\u7e23\u5e02\u52de\u52d5\u5c40\uff08\u8655\uff09\u7533\u8acb\u52de\u8cc7\u722d\u8b70\u8abf\u89e3\uff0c',
+    '  \u6216\u4f9d\u6cd5\u63d0\u8d77\u6c11\u4e8b\u8a34\u8a1f\u8acb\u6c42\u7d66\u4ed8\u3002',
+    '',
+    SEP,
+    '\u8072\u8acb\u4eba\uff08\u52de\u5de5\uff09\uff1a' + '_'.repeat(10) + '\uff08\u7c3d\u540d\u6216\u84cb\u7ae0\uff09',
+    '\u8eab\u5206\u8b49\u5b57\u865f\uff1a' + '_'.repeat(13),
+    '\u806f\u7d61\u96fb\u8a71\uff1a' + '_'.repeat(14),
+    '\u5730\u3000\u3000\u5740\uff1a' + '_'.repeat(14),
+  ]);
+
+  document.getElementById('docText').value = lines.join('\n');
+  document.getElementById('docOutput').style.display = 'block';
+  document.getElementById('docOutput').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyDoc() {
+  const ta = document.getElementById('docText');
+  ta.select();
+  ta.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(ta.value).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2500);
+  }).catch(() => {
+    document.execCommand('copy');
+    const msg = document.getElementById('copyMsg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2500);
+  });
+}
+
+function closeDoc() {
+  document.getElementById('docOutput').style.display = 'none';
+}
+
+// ── Init ──
+syncHourlyInput();
+renderCalendar();
+renderFormulas();
+renderResults();
+</script>
+</body>
+
+</html>
